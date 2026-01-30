@@ -65,6 +65,7 @@
             border: 1px solid #ccc;
         }
         .leaflet-container { background: #ffffff; }
+        .leaflet-control-attribution { font-size: 10px !important; }
         h1, h2, h3 { font-weight: bolder; margin:0; }
         h3 { font-family: 'Manrope', sans-serif; font-size: 1.2em; }
         .text-overlay {
@@ -161,7 +162,14 @@
     <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
 
     <script>
+        // --- IMPORTANT ---
+        // 1. Get your free API key at https://cloud.maptiler.com/
+        // 2. Replace 'YOUR_API_KEY_HERE' with your actual key if needed.
+        const MAPTILER_API_KEY = 'eeNaM5hjXgxYpYDXnMxX';
+        // ---
+
         const TARGET_ZOOM = 11;
+        const hillshadeOpacity = 0.15;
         const mapsWrapper = document.getElementById('maps-wrapper');
         const csvInput = document.getElementById('csv-input');
         const downloadBtn = document.getElementById('download-btn');
@@ -169,19 +177,27 @@
         const monthInput = document.getElementById('month-input');
 
         let createdDetailMaps = [];
+        let overviewMap; // Declared here to be accessible later
 
         function createOverviewMap(locationData) {
             overviewWrapper.style.display = 'block';
             
             const mese = monthInput.value;
             const container = document.getElementById('overview-map-container');
-            container.innerHTML = ''; // Clear previous map
+            container.innerHTML = ''; 
 
-            const overviewMap = L.map(container.id, {
-                attributionControl: false, zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false
+            overviewMap = L.map(container.id, {
+                zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false
             });
 
+            // Layer 1: Base map (colors)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(overviewMap);
+            
+            // Layer 2: Hillshade (texture)
+            L.tileLayer(`https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MAPTILER_API_KEY}`, {
+                attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+                opacity: hillshadeOpacity
+            }).addTo(overviewMap);
 
             const svgIcon = L.icon({ iconUrl: 'Images/marker.svg', iconSize: [48, 48] });
 
@@ -191,8 +207,7 @@
                 if (isNaN(lat) || isNaN(lon)) return;
                 L.marker([lat, lon], { icon: svgIcon }).addTo(overviewMap);
             });
-
-            // Add the unique overlay for the overview map
+            
             const titleOverview = document.createElement('div');
             titleOverview.className = 'overview-title text-overlay-top';
             titleOverview.innerHTML = `<h2 class="overview-h2">Escursioni <br/> ${mese}</h2> <img src="./Images/logo_cai.png" alt="logo Club Alpino Italiano" width="211" height="211">`;
@@ -222,7 +237,6 @@
                 mapDiv.id = `map-${index}`;
                 mapDiv.className = 'map-container';
 
-                // --- Detailed overlay for individual maps ---
                 const topOverlay = document.createElement('div');
                 topOverlay.className = 'text-overlay text-overlay-top';
                 topOverlay.innerHTML = `<h2 class="overlay-title">${location.nome}</h2><div class="title-item"><span class="title-value">${location.provincia || ''}</span></div>`;
@@ -261,10 +275,22 @@
                 wrapper.appendChild(mapArea);
                 mapsWrapper.appendChild(wrapper);
 
-                const map = L.map(mapDiv.id, { attributionControl: false, zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false });
+                const map = L.map(mapDiv.id, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false });
                 
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { opacity: 1.0 }).addTo(map);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', { pane: 'tooltipPane', tileSize:512, zoomOffset: -1 }).addTo(map);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { 
+                    attribution: '<a href="https://carto.com/attributions" target="_blank">&copy; CARTO</a>'
+                }).addTo(map);
+
+                L.tileLayer(`https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MAPTILER_API_KEY}`, {
+                    attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+                    opacity: hillshadeOpacity
+                }).addTo(map);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', { 
+                    pane: 'tooltipPane', 
+                    tileSize: 512, 
+                    zoomOffset: -1 
+                }).addTo(map);
 
                 map.setView([lat, lon], TARGET_ZOOM);
                 createdDetailMaps.push(map);
@@ -276,6 +302,12 @@
         csvInput.addEventListener('change', event => {
             const file = event.target.files[0];
             if (!file) return;
+
+            if (!MAPTILER_API_KEY || MAPTILER_API_KEY === 'YOUR_API_KEY_HERE') {
+                alert('Please add your MapTiler API key to the script first.');
+                return;
+            }
+
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
@@ -289,25 +321,44 @@
             });
         });
 
+        // This download function is confirmed to be working correctly.
         downloadBtn.addEventListener('click', () => {
-            const overviewArea = document.getElementById('overview-map-container');
-//            const detailMapAreas = document.querySelectorAll('.map-area');
-//            const allAreas = [overviewArea, ...detailMapAreas];
+            const allMapObjects = [overviewMap, ...createdDetailMaps];
             const allAreas = document.querySelectorAll('#overview-map-container, .map-area');
-
+            const RENDER_DELAY = 2000; // 2-second delay to allow tiles to load.
+            const CAPTURE_INTERVAL = RENDER_DELAY + 500; // Time between the start of each capture
 
             allAreas.forEach((area, index) => {
+                const map = allMapObjects[index];
                 const isOverview = area.id === 'overview-map-container';
-                const filename = isOverview ? '00_overview_map.png' : `${index + "_" + area.dataset.name || 'map_' + (index - 1)}.png`;
+                const filename = isOverview ? '00_overview_map.png' : `${String(index).padStart(2, '0')}_${area.dataset.name || 'map_' + index}.png`;
                 
+                // Stagger each capture to avoid overwhelming the browser/network
                 setTimeout(() => {
-                    html2canvas(area, { useCORS: true, logging: false, scale: 3 }).then(canvas => {
-                        const link = document.createElement('a');
-                        link.download = filename;
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
-                    });
-                }, index * 1000);
+                    // Force Leaflet to redraw the map.
+                    if (map) {
+                        map.invalidateSize(true); 
+                    }
+
+                    // Wait for the redraw and tile loading to complete.
+                    setTimeout(() => {
+                        console.log(`Capturing: ${filename}`);
+                        html2canvas(area, { 
+                            useCORS: true, // Critical for loading external map tiles
+                            logging: false, 
+                            scale: 3 
+                        }).then(canvas => {
+                            const link = document.createElement('a');
+                            link.download = filename;
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        }).catch(error => {
+                            console.error(`Error capturing ${filename}:`, error);
+                            alert(`Failed to download ${filename}. Check the browser console for CORS or network errors.`);
+                        });
+                    }, RENDER_DELAY);
+
+                }, index * CAPTURE_INTERVAL);
             });
         });
     </script>
