@@ -213,8 +213,8 @@
             titleOverview.innerHTML = `<h2 class="overview-h2">Escursioni <br/> ${mese}</h2> <img src="./Images/logo_cai.png" alt="logo Club Alpino Italiano" width="211" height="211">`;
             container.appendChild(titleOverview);
 
-            const bounds = L.latLngBounds([43, 6.405], [47.287, 14.030]);
-            overviewMap.fitBounds(bounds);
+            const bounds = L.latLngBounds([43.5, 6.5], [47.2, 14.0]);
+            overviewMap.maxBounds(bounds);
         }
 
         function createBaseMaps(locationData) {
