@@ -180,42 +180,45 @@
         let overviewMap; // Declared here to be accessible later
 
         function createOverviewMap(locationData) {
-            overviewWrapper.style.display = 'block';
-            
-            const mese = monthInput.value;
-            const container = document.getElementById('overview-map-container');
-            container.innerHTML = ''; 
+    overviewWrapper.style.display = 'block';
+    
+    const mese = monthInput.value;
+    const container = document.getElementById('overview-map-container');
+    container.innerHTML = ''; 
 
-            overviewMap = L.map(container.id, {
-                zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false
-            });
+    overviewMap = L.map(container.id, {
+        zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, zoomSnap: 0.10
+    });
 
-            // Layer 1: Base map (colors)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(overviewMap);
-            
-            // Layer 2: Hillshade (texture)
-            L.tileLayer(`https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MAPTILER_API_KEY}`, {
-                attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
-                opacity: hillshadeOpacity
-            }).addTo(overviewMap);
+    // Layer 1: Base map (colors)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png').addTo(overviewMap);
+    
+    // Layer 2: Hillshade (texture)
+    L.tileLayer(`https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MAPTILER_API_KEY}`, {
+        attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+        opacity: hillshadeOpacity
+    }).addTo(overviewMap);
 
-            const svgIcon = L.icon({ iconUrl: 'Images/marker.svg', iconSize: [48, 48] });
+    const svgIcon = L.icon({ iconUrl: 'Images/marker.svg', iconSize: [48, 48] });
 
-            locationData.forEach(location => {
-                const lat = parseFloat(location.lat);
-                const lon = parseFloat(location.lon);
-                if (isNaN(lat) || isNaN(lon)) return;
-                L.marker([lat, lon], { icon: svgIcon }).addTo(overviewMap);
-            });
-            
-            const titleOverview = document.createElement('div');
-            titleOverview.className = 'overview-title text-overlay-top';
-            titleOverview.innerHTML = `<h2 class="overview-h2">Escursioni <br/> ${mese}</h2> <img src="./Images/logo_cai.png" alt="logo Club Alpino Italiano" width="211" height="211">`;
-            container.appendChild(titleOverview);
+    locationData.forEach(location => {
+        const lat = parseFloat(location.lat);
+        const lon = parseFloat(location.lon);
+        if (isNaN(lat) || isNaN(lon)) return;
+        L.marker([lat, lon], { icon: svgIcon }).addTo(overviewMap);
+    });
+    
+    const titleOverview = document.createElement('div');
+    titleOverview.className = 'overview-title text-overlay-top';
+    titleOverview.innerHTML = `<h2 class="overview-h2">Escursioni <br/> ${mese}</h2> <img src="./Images/logo_cai.png" alt="logo Club Alpino Italiano" width="211" height="211">`;
+    container.appendChild(titleOverview);
 
-            const bounds = L.latLngBounds([43.5, 6.5], [47.2, 14.0]);
-            overviewMap.maxBounds(bounds);
-        }
+    
+    const bounds = L.latLngBounds([43.632, 6.526], [47.145, 13.777]);
+    const centerBounds = bounds.getCenter();
+    overviewMap.setZoom(7.70);
+    overviewMap.setView(centerBounds);
+}
 
         function createBaseMaps(locationData) {
             mapsWrapper.innerHTML = '';
